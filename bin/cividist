@@ -268,7 +268,9 @@ if [ -z "$1" ]; then
 fi
 
 if [ ! -d "$SRC/distmaker" -o ! -d "$TARS" ]; then
+  echo "The folders $SRC/distmaker and $TARS do not exist."
   echo "Please prepare a 'dist' folder using buildkit and run the command within that folder."
+  echo "See https://github.com/civicrm/civicrm-buildkit/issues/228 for more."
   exit
 fi
 
