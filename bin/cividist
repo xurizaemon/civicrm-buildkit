@@ -227,7 +227,7 @@ function cividist_l10n_is_current() {
   if [ ! -d l10n ]; then
     return 2
   fi
-  if test `find -mindepth 1 -maxdepth 1 -type d -name l10n -mmin +$L10N_TTL` ; then
+  if test `find . -mindepth 1 -maxdepth 1 -type d -name l10n -mmin +$L10N_TTL` ; then
     return 1
   fi
   return 0
