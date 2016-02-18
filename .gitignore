@@ -19,11 +19,13 @@ bin/civicrm-upgrade-test
 bin/civistrings
 bin/civix
 bin/composer
+bin/cv
 bin/dbunit
 bin/drush
 bin/drush.bat
 bin/drush.complete.sh
 bin/drush.php
+bin/drush8
 bin/git-php-symbol-diff
 bin/git-scan
 bin/hub
@@ -31,10 +33,12 @@ bin/joomla
 bin/jshint
 bin/karma
 bin/paratest
+bin/phantomjs
 bin/php-symbol-diff
 bin/phpcbf
 bin/phpcs
 bin/phpunit
+bin/phpunit4
 bin/wp
 bin/wp.bat
 build/

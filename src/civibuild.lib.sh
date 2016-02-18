@@ -263,9 +263,9 @@ function _amp_install_cms() {
   [ "$SITE_ID" == "default" ] && amp_name=cms
 
   if [ -n "$CMS_URL" ]; then
-    amp create -f --root="$CMS_ROOT" --name="$amp_name" --prefix=CMS_ --url="$CMS_URL" --output-file="$amp_vars_file_path"
+    amp create -f --root="$CMS_ROOT" --name="$amp_name" --prefix=CMS_ --url="$CMS_URL" --output-file="$amp_vars_file_path" --perm="$CMS_DB_PERM"
   else
-    amp create -f --root="$CMS_ROOT" --name="$amp_name" --prefix=CMS_ --output-file="$amp_vars_file_path"
+    amp create -f --root="$CMS_ROOT" --name="$amp_name" --prefix=CMS_ --output-file="$amp_vars_file_path" --perm="$CMS_DB_PERM"
   fi
 
   source "$amp_vars_file_path"
@@ -279,7 +279,7 @@ function _amp_install_civi() {
   local amp_name="civi$SITE_ID"
   [ "$SITE_ID" == "default" ] && amp_name=civi
 
-  amp create -f --root="$CMS_ROOT" --name="$amp_name" --prefix=CIVI_ --skip-url --output-file="$amp_vars_file_path" --perm=super
+  amp create -f --root="$CMS_ROOT" --name="$amp_name" --prefix=CIVI_ --skip-url --output-file="$amp_vars_file_path" --perm="$CIVI_DB_PERM"
 
   source "$amp_vars_file_path"
   rm -f "$amp_vars_file_path"
@@ -292,7 +292,7 @@ function _amp_install_test() {
   local amp_name="test$SITE_ID"
   [ "$SITE_ID" == "default" ] && amp_name=test
 
-  amp create -f --root="$CMS_ROOT" --name="$amp_name" --prefix=TEST_ --skip-url --output-file="$amp_vars_file_path" --perm=super
+  amp create -f --root="$CMS_ROOT" --name="$amp_name" --prefix=TEST_ --skip-url --output-file="$amp_vars_file_path" --perm="$TEST_DB_PERM"
 
   source "$amp_vars_file_path"
   rm -f "$amp_vars_file_path"
@@ -306,7 +306,7 @@ function _amp_install_clone() {
   echo "[[Setup MySQL for \"$2\"]]"
   cvutil_assertvars _amp_install_cms CLONE_DIR SITE_NAME SITE_ID TMPDIR
   local amp_vars_file_path=$(mktemp.php ampvar)
-  amp create -f --root="$CLONE_DIR" --name=$1 --prefix=$2_ --skip-url --output-file="$amp_vars_file_path" --perm=super
+  amp create -f --root="$CLONE_DIR" --name=$1 --prefix=$2_ --skip-url --output-file="$amp_vars_file_path" --perm="$CIVI_DB_PERM"
   source "$amp_vars_file_path"
   rm -f "$amp_vars_file_path"
 }
@@ -489,6 +489,7 @@ function civicrm_make_settings_php() {
 
   CMS_DB_HOSTPORT=$(cvutil_build_hostport "$CMS_DB_HOST" "$CMS_DB_PORT")
   CIVI_DB_HOSTPORT=$(cvutil_build_hostport "$CIVI_DB_HOST" "$CIVI_DB_PORT")
+  TEST_DB_HOSTPORT=$(cvutil_build_hostport "$TEST_DB_HOST" "$TEST_DB_PORT")
   cat "$CIVI_CORE/$tpl" \
     | sed "s;%%baseURL%%;${CMS_URL};" \
     | sed "s;%%cms%%;${CIVI_UF};" \
@@ -501,6 +502,10 @@ function civicrm_make_settings_php() {
     | sed "s;%%dbName%%;${CIVI_DB_NAME};" \
     | sed "s;%%dbPass%%;${CIVI_DB_PASS};" \
     | sed "s;%%dbUser%%;${CIVI_DB_USER};" \
+    | sed "s;%%testHost%%;${TEST_DB_HOSTPORT};" \
+    | sed "s;%%testName%%;${TEST_DB_NAME};" \
+    | sed "s;%%testPass%%;${TEST_DB_PASS};" \
+    | sed "s;%%testUser%%;${TEST_DB_USER};" \
     | sed "s;%%siteKey%%;${CIVI_SITE_KEY};" \
     | sed "s;%%templateCompileDir%%;${CIVI_TEMPLATEC};" \
     > "$CIVI_SETTINGS"
@@ -570,7 +575,9 @@ function civicrm_make_test_settings_php() {
   if (!defined('CIVICRM_TEMPLATE_COMPILEDIR')) {
     define('CIVICRM_TEMPLATE_COMPILEDIR', '${CIVI_TEMPLATEC}');
   }
-  define('DONT_DOCUMENT_TEST_CONFIG', TRUE);
+  if (!defined('DONT_DOCUMENT_TEST_CONFIG')) {
+    define('DONT_DOCUMENT_TEST_CONFIG', TRUE);
+  }
 EOF
 
     cvutil_inject_settings "$CIVI_CORE/tests/phpunit/CiviTest/civicrm.settings.local.php" "civitest.settings.d"
@@ -673,6 +680,46 @@ function wp_uninstall() {
 }
 
 ###############################################################################
+## Backdrop -- Generate config files and setup database
+## usage: backdrop_install <extra-drush-args>
+## To use an "install profile", simply pass it as part of <extra-drush-args>
+function backdrop_install() {
+  cvutil_assertvars backdrop_install CMS_ROOT SITE_ID CMS_TITLE CMS_DB_USER CMS_DB_PASS CMS_DB_HOST CMS_DB_NAME ADMIN_USER ADMIN_PASS CMS_URL
+  pushd "$CMS_ROOT" >> /dev/null
+    amp datadir "files" "${PRIVATE_ROOT}/"
+
+    CMS_DB_HOSTPORT=$(cvutil_build_hostport "$CMS_DB_HOST" "$CMS_DB_PORT")
+    ./core/scripts/install.sh "$@" \
+      --db-url="mysql://${CMS_DB_USER}:${CMS_DB_PASS}@${CMS_DB_HOSTPORT}/${CMS_DB_NAME}" \
+      --account-name="$ADMIN_USER" \
+      --account-pass="$ADMIN_PASS" \
+      --account-mail="$ADMIN_EMAIL" \
+      --site-name "$CMS_TITLE"
+
+    cvutil_inject_settings "$CMS_ROOT/settings.php" "backdrop.settings.d"
+
+    ## FIXME: no drush for backdrop: drush vset --yes file_private_path "${PRIVATE_ROOT}/${DRUPAL_SITE_DIR}"
+  popd >> /dev/null
+}
+
+###############################################################################
+## Backdrop -- Destroy config files and database tables
+function backdrop_uninstall() {
+  cvutil_assertvars backdrop_uninstall CMS_ROOT SITE_ID CMS_URL
+
+  pushd "$CMS_ROOT" >> /dev/null
+    git checkout -- settings.php
+    rm -rf files
+    git checkout -- files/
+  popd >> /dev/null
+
+  if [ -n "$DRUPAL_SITE_DIR" -a -d "$PRIVATE_ROOT/$DRUPAL_SITE_DIR" ]; then
+    rm -rf "$PRIVATE_ROOT/$DRUPAL_SITE_DIR"
+  fi
+}
+
+
+###############################################################################
 ## Drupal -- Generate config files and setup database
 ## currently just a wrapper for drupal7 install - but may add crazy logic ... like an if.
 ## usage: drupal_install <extra-drush-args>
@@ -721,7 +768,7 @@ function drupal8_install() {
   pushd "$CMS_ROOT" >> /dev/null
     [ -f "sites/$DRUPAL_SITE_DIR/settings.php" ] && rm -f "sites/$DRUPAL_SITE_DIR/settings.php"
 
-    drush site-install -y "$@" \
+    drush8 site-install -y "$@" \
       --db-url="mysql://${CMS_DB_USER}:${CMS_DB_PASS}@${CMS_DB_HOSTPORT}/${CMS_DB_NAME}" \
       --account-name="$ADMIN_USER" \
       --account-pass="$ADMIN_PASS" \

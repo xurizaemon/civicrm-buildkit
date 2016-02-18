@@ -30,23 +30,6 @@ if [[ "$CIVI_VERSION" =~ ^4.[0123456](\.([0-9]|alpha|beta)+)?$ ]] ; then
   CIVI_EXT_URL="${CMS_URL}/sites/${DRUPAL_SITE_DIR}/ext"
 fi
 
-# these steps should be happening because of the make file but....
-# perhaps because they are not on https://www.drupal.org/project/drupalorg_whitelist ?
-mkdir -p "${WEB_ROOT}/libraries/"
-cd "${WEB_ROOT}/libraries/"
-if [[ ! -e 'civicrm' ]]; then
-  git clone https://github.com/civicrm/civicrm-core.git
-fi
-cd civicrm
-if [[ ! -e 'packages' ]]; then
-  git clone https://github.com/civicrm/civicrm-packages.git
-fi
-
-cd "${WEB_ROOT}/modules/"
-if [[ ! -e 'civicrm' ]]; then
-  git clone https://github.com/civicrm/civicrm-drupal.git -b 8.x-${CIVI_VERSION} civicrm
-fi
-
 civicrm_install
 
 ###############################################################################
@@ -185,10 +168,6 @@ pushd "${WEB_ROOT}/sites/${DRUPAL_SITE_DIR}" >> /dev/null
   #  add 'sign CiviCRM Petition'
 #EOPERM
 
-  ## Setup CiviVolunteer
-  drush -y cvapi extension.install key=org.civicrm.angularprofiles debug=1
-
-  drush8 -y cvapi extension.install key=org.civicrm.volunteer debug=1
   # drush8 scr "$PRJDIR/src/drush/perm.php" <<EOPERM
   #  role 'anonymous user'
     #d8 can't find role authenticated user
@@ -203,3 +182,4 @@ pushd "${WEB_ROOT}/sites/${DRUPAL_SITE_DIR}" >> /dev/null
  # INSTALL_DASHBOARD_USERS="$ADMIN_USER;$DEMO_USER" drush8 scr "$SITE_CONFIG_DIR/install-dashboard.php"
 
 popd >> /dev/null
+

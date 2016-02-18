@@ -23,7 +23,7 @@ projects[] = drupal
 ; see: http://wiki.civicrm.org/confluence/display/CRMDOC/Github+for+CiviCRM
 
 libraries[civicrmdrupal][destination] = modules
-libraries[civicrmdrupal][directory_name] = civicrm-drupal
+libraries[civicrmdrupal][directory_name] = civicrm
 libraries[civicrmdrupal][download][type] = git
 libraries[civicrmdrupal][download][url] = %%CACHE_DIR%%/civicrm/civicrm-drupal.git
 libraries[civicrmdrupal][download][branch] = 8.x-%%CIVI_VERSION%%
@@ -64,30 +64,3 @@ libraries[civicrm][overwrite] = TRUE
 ; Developer modules
 ; ****************************************
 
-libraries[civivolunteer][destination] = libraries
-libraries[civivolunteer][directory_name] = civicrm/tools/extensions/civivolunteer
-libraries[civivolunteer][download][type] = git
-libraries[civivolunteer][download][url] = %%CACHE_DIR%%/civicrm/civivolunteer.git
-libraries[civivolunteer][download][branch] = %%VOL_VERSION%%
-libraries[civivolunteer][overwrite] = TRUE
-
-libraries[ng_profiles][destination] = libraries
-libraries[ng_profiles][directory_name] = civicrm/tools/extensions/org.civicrm.angularprofiles
-libraries[ng_profiles][download][type] = git
-libraries[ng_profiles][download][url] = %%CACHE_DIR%%/ginkgostreet/org.civicrm.angularprofiles.git
-libraries[ng_profiles][download][branch] = %%NG_PRFL_VERSION%%
-libraries[ng_profiles][overwrite] = TRUE
-
-libraries[civisualize][destination] = libraries
-libraries[civisualize][directory_name] = civicrm/tools/extensions/civisualize
-libraries[civisualize][download][type] = git
-libraries[civisualize][download][url] = %%CACHE_DIR%%/TechToThePeople/civisualize.git
-libraries[civisualize][download][branch] = master
-libraries[civisualize][overwrite] = TRUE
-
-libraries[cividiscount][destination] = libraries
-libraries[cividiscount][directory_name] = civicrm/tools/extensions/cividiscount
-libraries[cividiscount][download][type] = git
-libraries[cividiscount][download][url] = %%CACHE_DIR%%/dlobo/org.civicrm.module.cividiscount.git
-libraries[cividiscount][download][branch] = %%DISC_VERSION%%
-libraries[cividiscount][overwrite] = TRUE

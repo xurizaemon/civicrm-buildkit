@@ -10,7 +10,7 @@ full collection -- installing each individually takes a lot of work.
 This is the same collection of tools which manages the test/demo/release
 infrastructure for civicrm.org.
 
-## Requirements
+## System Requirements
 
  * Bash (Unix shell)
  * Git
@@ -36,7 +36,7 @@ have `sudo` permissions.
 
 ## Download: Option #2: Other Systems
 
-If you already installed the requirements (`git`, `php` etc), then you can
+If you already installed the system requirements (`git`, `php`, etc or equivalents), then you can
 download buildkit to `~/buildkit` with these commands:
 
 ```bash
@@ -131,6 +131,7 @@ You will now have the ability to run civibuild, civilint, etc, globally.
    * [civix](https://github.com/totten/civix) - Generate skeletal code for CiviCRM extensions.
    * [civistrings](https://github.com/civicrm/civistrings) - Scan code for translatable strings (*.pot).
    * [cividist](https://github.com/civicrm/civicrm-buildkit/blob/master/doc/cividist.md) - Generate tarballs from a series of git branches/tags
+   * [cv](https://github.com/civicrm/cv) - Execute custom PHP in Civi
  * Dependency management
    * [composer](http://getcomposer.org/) - Manage dependencies for PHP code.
    * [bower](http://bower.io/) - Manage dependencies for Javascript code.

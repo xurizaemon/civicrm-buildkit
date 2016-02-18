@@ -43,6 +43,8 @@ function split_files() {
   local jsfiles="$2"
   local skipfiles="$3"
 
+  local check_traits=$(php -r 'echo version_compare(PHP_VERSION, "5.4.0", ">=") ? "1" : "0";')
+
   touch "$phpfiles" "$jsfiles" "$skipfiles"
 
   while read file; do
@@ -53,6 +55,14 @@ function split_files() {
     elif [[ "$absfile" =~ (/DAO/|/examples/|/tools/) ]]; then
       echo "$file" >> "$skipfiles"
 
+    elif [[ "$file" =~ Trait\.php$ ]]; then
+      if [ "x$check_traits" = "x1" ]; then
+        echo "$file" >> "$phpfiles"
+      else
+        echo "WARNING: Cannot check style on $file with PHP 5.3. Consider upgrading PHP."
+        echo "$file" >> "$skipfiles"
+      fi
+
     elif [[ "$file" =~ \.php$ ]]; then
       echo "$file" >> "$phpfiles"
 
@@ -60,6 +70,9 @@ function split_files() {
       echo "$file" >> "$jsfiles"
 
     elif [[ "$file" =~ \.tpl$ ]]; then
+      echo "$file" >> "$skipfiles"
+
+    elif [[ "$file" =~ \.template$ ]]; then
       echo "$file" >> "$skipfiles"
 
     ## e.g. <?php or #!/usr/bin/php or #!/usr/bin/env php
@@ -158,10 +171,10 @@ if grep -q . "$TMP/php.txt" ; then
 
   echo "===============================[ phpcs  ]==============================="
   if [ -n "$CHECKSTYLE_OUT" ]; then
-    xargs phpcs --standard="$PHPCS_STD" --report=checkstyle < "$TMP/php.txt" > "$CHECKSTYLE_OUT/checkstyle-phpcs.xml"
+    xargs $BINDIR/phpcs --standard="$PHPCS_STD" --report=checkstyle < "$TMP/php.txt" > "$CHECKSTYLE_OUT/checkstyle-phpcs.xml"
     PHPCS_EXIT=$?
   else
-    xargs phpcs --standard="$PHPCS_STD" < "$TMP/php.txt"
+    xargs $BINDIR/phpcs --standard="$PHPCS_STD" < "$TMP/php.txt"
     PHPCS_EXIT=$?
   fi
 fi
@@ -171,10 +184,10 @@ JSHINT_EXIT=0
 if grep -q . "$TMP/js.txt" ; then
   echo "===============================[ jshint ]==============================="
   if [ -n "$CHECKSTYLE_OUT" ]; then
-    xargs jshint --reporter=checkstyle < "$TMP/js.txt" > "$CHECKSTYLE_OUT/checkstyle-jshint.xml"
+    xargs $BINDIR/jshint --reporter=checkstyle < "$TMP/js.txt" > "$CHECKSTYLE_OUT/checkstyle-jshint.xml"
     JSHINT_EXIT=$?
   else
-    xargs jshint --verbose < "$TMP/js.txt"
+    xargs $BINDIR/jshint --verbose < "$TMP/js.txt"
     JSHINT_EXIT=$?
   fi
 fi

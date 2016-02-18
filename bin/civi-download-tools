@@ -18,10 +18,15 @@ PRJDIR=$(dirname "$BINDIR")
 TMPDIR="$PRJDIR/app/tmp"
 LOCKFILE="$TMPDIR/civi-download-tools.lock"
 LOCKTIMEOUT=90
-CIVIXVER=15.04.1
-CIVIXURL="http://downloads.sourceforge.net/project/civix/civix-${CIVIXVER}.tar.bz2?r=http%3A%2F%2Fsourceforge.net%2Fprojects%2Fcivix%2Ffiles%2F&use_mirror=master"
+CIVIXURL="https://download.civicrm.org/civix/civix.phar-2016-02-12-59f6ad50"
+CVURL="https://download.civicrm.org/cv/cv.phar-b6e28d1"
 HUBTAG="v1.12.4"
 HUBURL="https://github.com/github/hub"
+DRUSH8URL=http://files.drush.org/drush.phar
+PHPUNITURL=https://phar.phpunit.de/phpunit-4.8.21.phar
+WPCLIURL=https://github.com/wp-cli/wp-cli/releases/download/v0.22.0/wp-cli-0.22.0.phar
+GITSCANURL="https://download.civicrm.org/git-scan/git-scan.phar-14d03c3b"
+AMPURL="https://download.civicrm.org/amp/amp.phar-2016-02-05-589d46ae"
 IS_QUIET=
 IS_FORCE=
 IS_FULL=
@@ -83,6 +88,29 @@ function download_url() {
 }
 
 ###############################################################################
+## usage: download_program_if_changed <url> <out-file> <flag-file>
+function download_program_if_changed() {
+  local url="$1"
+  local binfile="$2"
+  local flagfile="$3"
+  local progname=$(basename $binfile)
+
+  mkdir -p $(dirname "$flagfile")
+  touch "$flagfile"
+  if [ -z "$IS_FORCE" -a -e "$binfile" -a "$(cat $flagfile)" == "$url" ]; then
+    echo_comment "[[$progname binary ($binfile) already exists. Skipping.]]"
+  else
+    echo "[[Install $progname]]"
+    if [ -L "$binfile" ]; then
+      rm -f "$binfile"
+    fi
+    download_url "$url" "$binfile"
+    chmod +x "$binfile"
+    echo "$url" > "$flagfile"
+  fi
+}
+
+###############################################################################
 ## usage: echo_comment <message>
 function echo_comment() {
   if [ -z "$IS_QUIET" ]; then
@@ -103,6 +131,19 @@ function check_command() {
   cmdpath=$(which $cmd)
   if [ -z "$cmdpath" ]; then
     echo "$msg"
+    show_command "$cmd" "It is possible that you have already installed \"$cmd\" in a non-standard location. If so, please update the PATH appropriately. Possible matches were found in:"
+    if [ "$requirement" = "required" ]; then
+      exit 3
+    fi
+  fi
+}
+
+###############################################################################
+## Show a list of possible locations where the command can be found
+## usage: show_command <command-name> [<msg>]
+function show_command() {
+    local cmd="$1"
+    local msg="$2"
     local is_first=1
     for altdir in \
       /Applications/MAMP/Library/bin \
@@ -113,18 +154,12 @@ function check_command() {
     do
       if [ -f "$altdir/$cmd" ]; then
         if [ -n "$is_first" ]; then
-          echo ""
-          echo "It is possible that you have already installed \"$cmd\" in a non-standard location."
-          echo "If so, please update the PATH appropriately. Possible matches were found in:"
+          echo $msg
           is_first=
         fi
         echo " * $altdir"
       fi
     done
-    if [ "$requirement" = "required" ]; then
-      exit 3
-    fi
-  fi
 }
 
 ###############################################################################
@@ -152,14 +187,23 @@ function check_php_ext() {
   local msg="$3"
 
   if [ -z "$msg" -a "$requirement" = "required" ]; then
-    msg="ERROR: Failed to find required PHP extension \"$ext\". Please install it for PHP (CLI and web)."
+    msg="ERROR: Failed to find required PHP extension \"$ext\"."
   elif [ -z "$msg" -a "$requirement" = "recommended" ]; then
-    msg="WARNING: Failed to find recommended PHP extension \"$ext\". Please install it for PHP (CLI and web)."
+    msg="WARNING: Failed to find recommended PHP extension \"$ext\"."
   fi
 
   if php -r 'exit((int)in_array("'$ext'", get_loaded_extensions()));' ; then
     echo "$msg"
+
     if [ "$requirement" = "required" ]; then
+      echo ""
+      if [ `uname` = "Darwin" ]; then
+        echo "TIP: In OS X, it is common to install an alternative PHP bundle, such as MAMP or XAMPP, which provides more extensions by default."
+        show_command php "TIP: You may wish to configure a PATH to choose a different version of PHP. The following versions were found automatically:"
+      fi
+      if [ `uname` = "Linux" ]; then
+        echo "TIP: In some systems, the PHP version used in CLI and web are different. Extensions should be active in both."
+      fi
       exit 4
     fi
   fi
@@ -388,10 +432,10 @@ pushd $PRJDIR >> /dev/null
       npm install
       cat package.json | php -r 'echo md5(file_get_contents("php://stdin"));' > "$TMPDIR/package-data.md5"
     fi
-    for f in node_modules/bower/bin/bower node_modules/karma/bin/karma node_modules/jshint/bin/jshint ; do
+    for f in node_modules/bower/bin/bower node_modules/karma/bin/karma node_modules/jshint/bin/jshint node_modules/karma-phantomjs-launcher/node_modules/phantomjs/bin/phantomjs ; do
       pushd "$PRJDIR/bin" >> /dev/null
         toolname=$(basename $f)
-        if [ ! -e "$toolname" ]; then
+        if [ -f "../$f" -a ! -L "$toolname" ]; then
           ln -s ../$f $toolname
         fi
       popd >> /dev/null
@@ -400,33 +444,17 @@ pushd $PRJDIR >> /dev/null
 
   [ ! -d "$PRJDIR/extern" ] && mkdir "$PRJDIR/extern"
 
-  ## Download "civix"
-  ## FIXME: Update civix so that it can be installed via composer as a dependency
-  mkdir -p "$PRJDIR/extern" && touch "$PRJDIR/extern/civix.txt"
-  if [ -z "$IS_FORCE" -a -e "$PRJDIR/bin/civix" -a -d "extern/civix" -a "$(cat $PRJDIR/extern/civix.txt)" == "$CIVIXURL" ]; then
-    echo_comment "[[civix binary ($PRJDIR/bin/civix) already exists. Skipping.]]"
-  else
-    echo "[[Install civix]]"
+  ## Cleanup old civix tarballs
+  [ -d "$PRJDIR/extern/civix" ] && rm -rf "$PRJDIR/extern/civix"
 
-    ## Cleanup
-    [ -e app/tmp/civix ] && rm -rf app/tmp/civix
-    [ -e extern/civix ] && rm -rf extern/civix
-    [ -e "$TMPDIR/civix.tar.bz2" ] && rm -rf "$TMPDIR/civix.tar.bz2"
-    mkdir -p extern/civix
-
-    ## Download
-    download_url "$CIVIXURL" "$TMPDIR/civix.tar.bz2"
-    tar xj  --strip-components 1 -C extern/civix -f "$TMPDIR/civix.tar.bz2"
-
-    ## Setup a relative symlink
-    pushd bin >> /dev/null
-      [ -e civix ] && rm -f civix
-      ln -s ../extern/civix/civix civix
-    popd >> /dev/null
-
-    ## Mark as downloaded
-    echo "$CIVIXURL" > "$PRJDIR/extern/civix.txt"
-  fi
+  ## download_program_if_changed <url> <out-file> <flag-file>
+  download_program_if_changed "$DRUSH8URL" "$PRJDIR/bin/drush8" "$PRJDIR/extern/drush8.txt"
+  download_program_if_changed "$CVURL" "$PRJDIR/bin/cv" "$PRJDIR/extern/cv.txt"
+  download_program_if_changed "$PHPUNITURL" "$PRJDIR/bin/phpunit4" "$PRJDIR/extern/phpunit4.txt"
+  download_program_if_changed "$WPCLIURL" "$PRJDIR/bin/wp" "$PRJDIR/extern/wp-cli.txt"
+  download_program_if_changed "$GITSCANURL" "$PRJDIR/bin/git-scan" "$PRJDIR/extern/git-scan.txt"
+  download_program_if_changed "$AMPURL" "$PRJDIR/bin/amp" "$PRJDIR/extern/amp.txt"
+  download_program_if_changed "$CIVIXURL" "$PRJDIR/bin/civix" "$PRJDIR/extern/civix.txt"
 
   ## Download "hub"
   touch "$PRJDIR/extern/hub.txt"
